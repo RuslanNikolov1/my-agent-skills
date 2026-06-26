@@ -1,6 +1,6 @@
 ---
 name: new-app
-description: Bootstrap a greenfield Next.js App Router app with TypeScript, SCSS modules, Radix UI, TanStack Query, ESLint/Prettier, and Vercel deployment. Invoke with /new-app. Asks app name, SEO, i18n, CMS (Sanity), database (Supabase), Shopify, animations (GSAP), forms, and GitHub repo preferences; uses pnpm, skill-pinned package versions, and GitHub MCP when enabled.
+description: Bootstrap a greenfield Next.js App Router app with TypeScript, SCSS modules, Radix UI, TanStack Query, ESLint/Prettier, and Vercel deployment. Invoke with /new-app. Asks app name, SEO, i18n, CMS (Sanity), database (Supabase), Shopify, animations (GSAP), and forms; always creates a public GitHub repo, switches to initial-work branch via GitHub MCP, and links a Vercel project via CLI; uses pnpm and skill-pinned package versions.
 disable-model-invocation: true
 ---
 
@@ -20,8 +20,9 @@ The user invokes `/new-app` and describes the app (name, purpose, or target fold
     → ③ scaffold (create-next-app + pnpm)
     → ④ domain setup (stack skills in order)
     → ⑤ verification
-    → ⑥ github (conditional — GitHub MCP)
-    → ⑦ handoff (/new-feature)
+    → ⑥ github (GitHub MCP — repo + push main + branch initial-work)
+    → ⑦ vercel (CLI — create project, link, connect Git, Next.js preset)
+    → ⑧ handoff (/new-feature)
 ```
 
 **Escape hatch:** If setup fails, use `systematic-debugging` before retrying installs or config changes.
@@ -60,9 +61,8 @@ Ask **one question per message**. Wait for each answer before the next question.
 | 8 | **Animations:** Do you want **GSAP** set up? | Yes → Phase ④ runs `gsap` / `gsap-react` (client provider pattern, `useGSAP`, reduced-motion note). No → skip. |
 | 9 | **Forms:** Do you want form validation wired (**React Hook Form + Zod**)? | Yes → Phase ④ runs `react-hook-form-zod` with Radix-friendly patterns from `radix-ui-design-system`. No → skip form deps; defer to `/new-feature`. |
 | 10 | **Shopify:** Do you want **Shopify** integration? | Yes → ask **App** (embedded admin app) or **Storefront** (headless commerce on this Next.js site). Phase ④ runs `shopify-work` bootstrap. No → skip Shopify. |
-| 11 | **GitHub:** Create a repo on your GitHub account with the **same name as the app** (kebab-case package name)? | Yes → ask **private** (default) or **public**; optionally ask **organization** (omit for personal account). Phase ⑥ uses **GitHub MCP** (`create_repository`, `get_me`). No → skip GitHub; local git only. |
 
-**Not asked — always included:** pnpm, TanStack Query (`tanstack-query-best-practices`), ESLint + Prettier (`eslint-prettier-config`), Vercel deployment notes.
+**Not asked — always included:** pnpm, TanStack Query (`tanstack-query-best-practices`), ESLint + Prettier (`eslint-prettier-config`), **Vercel project** (Phase ⑦ — CLI create + link + Git connect; same kebab-case name as the app), **public GitHub repo** (Phase ⑥ — same kebab-case name as the app, personal account unless the brief specifies an org), **`initial-work` branch** (Phase ⑥ — created from `main` after bootstrap push; workspace ends on `initial-work`).
 
 ### Discovery summary (emit before Phase ③)
 
@@ -82,10 +82,11 @@ Bootstrap config:
 · Animations (GSAP): yes | no
 · Forms (RHF + Zod): yes | no
 · Shopify: yes (app | storefront) | no
-· GitHub: yes (private | public, org: … | personal) | no
+· GitHub: public repo (mandatory — `<kebab-case>` on personal account)
+· Active branch: initial-work (mandatory — created from main after bootstrap push)
 · Data fetching: TanStack Query (mandatory)
 · Lint/format: ESLint + Prettier (mandatory)
-· Hosting: Vercel
+· Hosting: Vercel (Phase ⑦ — CLI project + GitHub link; production branch: `main`)
 · Stack: Next.js App Router, TypeScript (strict), SCSS modules, Radix UI, design-system template
 ```
 
@@ -352,13 +353,12 @@ Path: `~/.agents/skills/shopify-work/SKILL.md`
 
 **Skip** when Shopify: no.
 
-### 17. Vercel hosting (mandatory)
+### 17. Vercel hosting prep (mandatory)
 
 - Add `docs/vercel.md` or section in `bootstrap-config.md`: deployment target **Vercel**
-- Document env vars required on Vercel (Sanity, Supabase, Shopify, SEO `metadataBase`, etc.)
-- `.env.local.example` lists all bootstrap env vars; never commit `.env.local`
+- Document env vars required on Vercel (Sanity, Supabase, Shopify, SEO `metadataBase`, etc.) — list keys in `.env.local.example`; never commit `.env.local`
 - Read `vercel-react-best-practices` for App Router + Vercel patterns when configuring build/output
-- Note: when **GitHub** is enabled, import the new repo in the Vercel dashboard; otherwise link the local repo after first push. No secrets in git.
+- **Project creation and Git linking** run in **Phase ⑦** (after GitHub push) — do not tell the user to import the repo manually in the dashboard
 
 ---
 
@@ -395,24 +395,26 @@ Checklist:
 - [ ] GSAP (if yes): client animation shell with cleanup
 - [ ] Forms (if yes): pinned RHF/Zod deps; starter form compiles
 - [ ] Shopify (if yes): capability check passed; storefront client or app docs + env example present
-- [ ] Vercel env/deployment notes in docs
+- [ ] Vercel env/deployment notes in docs (Phase ④ step 17)
 - [ ] `docs/bootstrap-config.md` records all discovery choices
-- [ ] GitHub (if yes): repo created via MCP; remote configured; bootstrap pushed
+- [ ] GitHub: public repo created via MCP; bootstrap pushed to `main`; `initial-work` on remote and checked out locally
+- [ ] Active branch is `initial-work` (`git branch --show-current`)
+- [ ] Vercel (Phase ⑦): project created/linked; GitHub connected; framework Next.js; production branch `main`
 
-Fix failures before Phase ⑥.
+Fix failures before Phase ⑥. Vercel linking is verified in Phase ⑦.
 
 ---
 
-## Phase ⑥ — GitHub (conditional)
-
-**When:** Discovery **GitHub: yes**.
+## Phase ⑥ — GitHub (mandatory)
 
 **MCP server:** `user-github` — read tool schemas under `mcps/user-github/tools/` before calling.
 
+Always create a **public** GitHub repo named after the app's kebab-case package name. Do **not** ask the user whether they want a repo.
+
 ### Capability check
 
-1. Confirm **GitHub MCP** is available (`create_repository`, `get_me`).
-2. Call **`get_me`** to resolve the authenticated user (and org if applicable).
+1. Confirm **GitHub MCP** is available (`create_repository`, `create_branch`, `get_me`; optionally `list_branches`).
+2. Call **`get_me`** to resolve the authenticated user (and org only if specified in the brief).
 3. If MCP is missing or auth fails, **stop and tell the user** what to configure — do not proceed silently.
 
 ### Create repository
@@ -423,18 +425,18 @@ Use **`create_repository`** with:
 |-------|--------|
 | `name` | Kebab-case package name from discovery (same as app name), e.g. `my-app` |
 | `description` | Optional one-line from the user's brief |
-| `private` | Per discovery (`true` default) |
-| `organization` | Omit for personal account; set when user chose an org |
+| `private` | **`false`** — always public |
+| `organization` | Omit for personal account; set only when the brief specifies an org |
 | `autoInit` | **`false`** — local scaffold is the source of truth; do not let GitHub seed a README |
 
-If the repo name already exists, report the conflict and ask whether to use a different name or skip GitHub setup.
+If the repo name already exists, report the conflict and ask whether to use a different name — do not skip GitHub setup unless creation is impossible.
 
 ### Connect local repo and push
 
 After Phase ⑤ passes:
 
 1. Ensure `.env.local` is **not** staged (only `.env.local.example` and project files).
-2. Create the **initial commit** (required when GitHub is enabled — exception to optional-commit handoff rule):
+2. Create the **initial commit** (required — exception to optional-commit handoff rule):
 
 ```bash
 git add .
@@ -453,23 +455,155 @@ git branch -M main
 git push -u origin main
 ```
 
-4. Record repo URL in `docs/bootstrap-config.md` under **GitHub**.
+### Create and switch to `initial-work`
+
+After `main` is pushed, create the working branch and switch the workspace to it. Do **not** ask the user — always use branch name **`initial-work`**.
+
+**Preferred — GitHub MCP:**
+
+1. Call **`create_branch`** with:
+   - `owner` / `repo` from `create_repository` response or `git remote get-url origin`
+   - `branch`: `initial-work`
+   - `from_branch`: `main`
+2. Check out locally (updates Cursor's branch indicator — there is no separate Cursor branch API):
+
+```bash
+git fetch origin
+git checkout initial-work
+git branch -u origin/initial-work
+```
+
+Use **`list_branches`** first if `initial-work` may already exist on the remote.
+
+**Fallback — MCP unavailable:**
+
+```bash
+git checkout -b initial-work
+git push -u origin initial-work
+```
+
+**Verify checkout** before Phase ⑦:
+
+```bash
+git branch --show-current   # must print: initial-work
+```
+
+If checkout fails (dirty tree, name conflict), stop and report — do **not** proceed to Vercel setup or handoff on `main`.
+
+4. Record in `docs/bootstrap-config.md` under **GitHub**:
+   - Repo URL
+   - Default branch: `main` (bootstrap baseline)
+   - Active branch: `initial-work`
 
 **Do not** force-push. **Do not** commit secrets.
 
-Skip this entire phase when GitHub: no.
+---
+
+## Phase ⑦ — Vercel (mandatory)
+
+**Skills:** `vercel-cli`, `env-vars` — read before running commands.
+
+**Tooling note:** The Vercel MCP server does **not** expose project creation, Git linking, or env-var management. Use the **Vercel CLI** (and REST API for framework preset only). Run from the **project root** after Phase ⑥ has pushed to GitHub.
+
+### Capability check
+
+1. Confirm CLI auth: `vercel whoami`. If it fails, **stop** and tell the user to run `vercel login` (device flow — cannot complete unattended).
+2. Resolve **team scope**: `vercel teams ls`. Use the team from the brief; if only one team exists, use it; if none, omit `--scope` (personal account).
+3. If `.vercel/project.json` already exists and points at the correct project, skip create/link — verify Git connection and framework instead.
+
+### Create and link project
+
+Use the **kebab-case package name** from discovery (same as GitHub repo name).
+
+```bash
+# 1) Create empty Vercel project (skip if it already exists — use vercel projects ls)
+vercel project add <kebab-case-name> --scope <team-slug>
+
+# 2) Link local directory (creates .vercel/project.json; may pull dev env vars to .env.local)
+vercel link --yes --project <kebab-case-name> --scope <team-slug>
+
+# 3) Connect GitHub (use origin URL from git remote)
+vercel git connect https://github.com/<owner>/<kebab-case-name>.git --scope <team-slug>
+```
+
+**Expected local side effects:** `.vercel/` (gitignored), `.env.local` (gitignored), `.gitignore` entries for `.vercel` and `.env*.local`. Do **not** commit `.env.local`.
+
+### Project settings
+
+| Setting | Value |
+|---------|--------|
+| **Project name** | Kebab-case app name (same as GitHub repo) |
+| **Framework preset** | **Next.js** (`nextjs`) |
+| **Root directory** | `./` (default — `null` in API) |
+| **Production branch** | **`main`** (matches Phase ⑥ `git branch -M main`) |
+
+**Framework preset:** The CLI has no `vercel project add --framework` flag. After link, set Next.js via REST API:
+
+```bash
+# Read teamId from .vercel/project.json (orgId) — do not echo tokens in output
+curl -sS -X PATCH "https://api.vercel.com/v9/projects/<kebab-case-name>?teamId=<orgId>" \
+  -H "Authorization: Bearer <token-from-vercel-auth>" \
+  -H "Content-Type: application/json" \
+  -d '{"framework":"nextjs","rootDirectory":null}'
+```
+
+Obtain the bearer token from the local Vercel CLI auth file (e.g. `%APPDATA%/com.vercel.cli/Data/auth.json` on Windows, `~/.local/share/com.vercel.cli/auth.json` on Linux). **Never** print or commit the token.
+
+**Production branch:** `vercel git connect` sets `productionBranch` from the GitHub repo’s default branch. Because Phase ⑥ renames to **`main`** before push, production should be **`main`**. Verify:
+
+```bash
+vercel project inspect <kebab-case-name> --scope <team-slug>
+```
+
+If the remote default branch differs (e.g. still `master`), either fix GitHub’s default branch to `main` or update production branch in the Vercel dashboard (no officially documented CLI for this).
+
+### Environment variables (optional at bootstrap)
+
+Push vars from `.env.local.example` when the user supplies values:
+
+```bash
+echo "<value>" | vercel env add <KEY> production preview development --scope <team-slug>
+vercel env update <KEY> production   # to change an existing value
+vercel env pull .env.local --yes     # sync cloud → local after dashboard/CLI changes
+```
+
+See `env-vars` skill for scoping rules. Never echo secret values in logs.
+
+### Verify
+
+```bash
+vercel project inspect <kebab-case-name> --scope <team-slug>
+```
+
+Confirm: **Framework Preset: Next.js**, **Root Directory: .**, Git repo connected, production branch **`main`**.
+
+### Record in docs
+
+Add to `docs/bootstrap-config.md` and/or `docs/vercel.md` under **Vercel**:
+
+- Team name and slug
+- Project name and ID (`prj_…` from `.vercel/project.json`)
+- Dashboard URL: `https://vercel.com/<team-slug>/<kebab-case-name>`
+- Production branch: `main`
+- Framework: Next.js
+- Env vars still needed on Vercel (from `.env.local.example`)
+
+**Do not** force-push. **Do not** commit secrets or `.env.local`.
 
 ---
 
-## Phase ⑦ — Handoff
+## Phase ⑧ — Handoff
 
 Tell the user:
 
-> Bootstrap complete on **pnpm**, targeting **Vercel**. Use **`/new-feature`** to add UI — it detects **i18n**, **SEO profile**, **Sanity**, **Supabase**, and **Shopify** from project setup. Data fetching: **TanStack Query**. Integration tests: ready if Supabase was enabled.
+> Bootstrap complete on **pnpm**, deployed to **Vercel**. Use **`/new-feature`** to add UI — it detects **i18n**, **SEO profile**, **Sanity**, **Supabase**, and **Shopify** from project setup. Data fetching: **TanStack Query**. Integration tests: ready if Supabase was enabled.
 
-If **GitHub** was enabled, include the repo URL and confirm the initial push succeeded.
+Include:
 
-If GitHub was skipped, optional initial commit only if the user asks.
+- **GitHub repo URL**
+- **Vercel project URL** (dashboard)
+- Bootstrap pushed to **`main`**; Vercel production deploys from **`main`**
+- **You are now on `initial-work`** — continue with `/new-feature` from this branch
 
 ---
 
@@ -493,8 +627,9 @@ Bootstrap checklist:
 - [ ] gsap — if animations yes
 - [ ] react-hook-form-zod — if forms yes (+ radix-ui-design-system)
 - [ ] shopify-work — if Shopify yes (app | storefront)
-- [ ] Vercel — env docs + deployment notes (mandatory)
-- [ ] GitHub — if yes: MCP create_repository + remote + initial push (Phase ⑥)
+- [ ] Vercel — env docs + deployment notes (Phase ④ step 17, mandatory)
+- [ ] GitHub — MCP create_repository + push main + create_branch initial-work + checkout (Phase ⑥, mandatory)
+- [ ] Vercel — CLI project add + link + git connect + Next.js preset (Phase ⑦, mandatory)
 ```
 
 ---
